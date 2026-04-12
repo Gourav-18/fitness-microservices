@@ -1,0 +1,32 @@
+### **Detailed Architecture Flow of Keycloak User Synchronization in API Gateway**
+
+In this architecture, user authentication and synchronization between **Keycloak, the API Gateway, and the User Service**
+ happen automatically when a user accesses the system. First, a user logs into the application through the **frontend**,
+ which redirects the authentication request to **Keycloak**, the identity and access management server. Keycloak verifies
+ the user’s credentials and, if authentication is successful, generates a **JWT (JSON Web Token) access token**.
+ This token contains important user information called **claims**, such as the user’s unique identifier (`sub`),
+ email address, first name (`given_name`), and last name (`family_name`). The frontend then includes this token in
+ every API request sent to the backend by adding it to the **Authorization header** in the format `Authorization: Bearer <JWT>`.
+  When this request reaches the **API Gateway**, the gateway first performs security validation using **Spring Security
+   with OAuth2 Resource Server configuration** (`.oauth2ResourceServer().jwt()`). Spring Security automatically
+    validates the JWT using the **public key provided by Keycloak**, ensuring that the token is authentic and has not
+     been tampered with. If the token is valid, the request continues through the gateway’s filter chain, where the
+     custom **KeycloakUserSyncFilter** executes. This filter extracts the **Authorization token** and optionally
+     the `X-User-ID` header from the incoming request, then parses the JWT to read user information such as email,
+     Keycloak ID (`sub`), first name, and last name. Using these extracted values, the filter creates a **RegisterRequest
+     object** that represents the user’s information. The gateway then calls the **User Service** using a reactive
+     **WebClient** to check whether the user already exists in the system by invoking the endpoint
+     `GET /api/users/{userId}/validate`. At this stage two scenarios are possible.
+     If the User Service returns that the user **already exists**, the gateway simply logs a message indicating that
+     synchronization is skipped and continues forwarding the request. However, if the user **does not exist**, the gateway
+     automatically registers the user by sending a request to `POST /api/users/register` with the user details extracted from
+     the JWT, including email, Keycloak ID, first name, last name, and a placeholder password since authentication is
+     handled by Keycloak rather than the internal system. After ensuring the user exists in the database, the API Gateway
+     mutates the request and adds a new header `X-User-ID` containing the Keycloak user ID. This modified request is then
+     forwarded to downstream microservices such as **Activity Service, Workout Service, or Nutrition Service**.
+     These services do not need to parse JWT tokens themselves; instead, they simply read the `X-User-ID` header to
+     identify the authenticated user and perform user-specific operations. This architecture ensures that **Keycloak remains
+     the single source of truth for authentication**, while the **API Gateway manages automatic user synchronization and
+     identity propagation across microservices**. As a result, developers do not need to manually create users in the system,
+     downstream services remain simpler because they rely only on the user ID header, and the overall microservice
+     ecosystem maintains consistent user identity across all services.
