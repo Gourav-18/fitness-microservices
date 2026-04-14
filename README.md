@@ -1,5 +1,6 @@
 🏋️ AI-Powered Fitness Microservices Platform
-![Architecture](Architecture flow.png)
+
+![Architecture](architecture.png)
 
 A **Spring Boot-based microservices architecture** that enables users to track fitness activities and receive **AI-driven personalized recommendations** using asynchronous event-driven communication and secure authentication.
 
