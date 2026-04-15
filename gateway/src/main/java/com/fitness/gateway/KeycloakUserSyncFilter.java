@@ -80,7 +80,6 @@ public class KeycloakUserSyncFilter implements WebFilter {
     }
 
     private RegisterRequest getUserDetails(String token) {
-
         try {
 
             // Remove Bearer prefix
